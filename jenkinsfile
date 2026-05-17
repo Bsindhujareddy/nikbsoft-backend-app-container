@@ -1,0 +1,76 @@
+pipeline {
+
+    agent any
+
+    environment {
+
+        AWS_REGION = 'us-east-1'
+
+        ECR_REPO = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nikbsoft-ecrrepo-backend-dev"
+
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        stage('Checkout Backend Repo') {
+
+            steps {
+
+                git branch: 'main',
+                credentialsId: 'github-cred',
+                url: 'https://github.com/Bsindhujareddy/nikbsoft-backend-app-container.git'
+            }
+        }
+
+         stage('build docker image and push') {
+            steps {
+                withAWS(credentials: 'aws-cred', region: "${AWS_REGION}") {
+                    sh '''
+                    aws ecr get-login-password --region $AWS_REGION | \
+                    docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+					cd backend
+                    docker build -t backend-app .
+                    docker tag backend-app $BACKEND_REPO:$IMAGE_TAG
+					docker push $BACKEND_REPO:$IMAGE_TAG
+                    '''
+                }
+            }
+        }
+
+        stage('Update Helm Repo') {
+
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_PASSWORD'
+                    )
+                ]) {
+
+                    sh '''
+                    rm -rf gitops-repo
+
+                    git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Bsindhujareddy/nikbsoft-argo-helm-chart-gitops.git gitops-repo
+
+                    cd gitops-repo/backend-chart
+
+                    sed -i "s/tag:.*/tag: \\"${IMAGE_TAG}\\"/g" values.yaml
+
+                    git config user.email "sindhuja94b@gmail.com"
+
+                    git config user.name "Bsindhujareddy"
+
+                    git add values.yaml
+
+                    git commit -m "Updated backend image tag ${IMAGE_TAG}"
+
+                    git push
+                    '''
+                }
+            }
+        }
+    }
+}
