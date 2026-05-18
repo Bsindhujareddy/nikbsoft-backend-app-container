@@ -29,6 +29,7 @@ pipeline {
                 withAWS(credentials: 'aws-cred', region: "${AWS_REGION}") {
                     sh '''
                     aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 855983325095.dkr.ecr.us-east-1.amazonaws.com
+                    cd backend
                     docker build -t backend-app .
                     docker tag backend-app $BACKEND_REPO:$IMAGE_TAG
 					docker push $BACKEND_REPO:$IMAGE_TAG
