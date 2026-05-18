@@ -7,6 +7,7 @@ pipeline {
         AWS_REGION = 'us-east-1'
 
         ECR_REPO = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nikbsoft-ecrrepo-backend-dev"
+        BACKEND_REPO = ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nikbsoft-ecrrepo-backend-dev
 
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
@@ -27,9 +28,7 @@ pipeline {
             steps {
                 withAWS(credentials: 'aws-cred', region: "${AWS_REGION}") {
                     sh '''
-                    aws ecr get-login-password --region $AWS_REGION | \
-                    docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-					cd backend
+                    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
                     docker build -t backend-app .
                     docker tag backend-app $BACKEND_REPO:$IMAGE_TAG
 					docker push $BACKEND_REPO:$IMAGE_TAG
